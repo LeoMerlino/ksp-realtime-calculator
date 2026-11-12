@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KSP ↔ Earth Time Converter</title>
+<style>
+  :root {
+    --bg: #0b1020;
+    --panel: #141a33;
+    --panel2: #1c2347;
+    --accent: #6ea8ff;
+    --accent2: #ffb86c;
+    --text: #e8ecff;
+    --muted: #9aa3c7;
+    --border: #2a3360;
+    --good: #7ee787;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1200px 800px at 20% -10%, #1a2350, var(--bg));
+    color: var(--text);
+    min-height: 100vh;
+  }
+  header {
+    padding: 24px 20px 10px;
+    text-align: center;
+  }
+  header h1 { margin: 0; font-size: 1.9rem; letter-spacing: 0.5px; }
+  header p { margin: 6px 0 0; color: var(--muted); font-size: 0.95rem; }
+  .tabs {
+    display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;
+    padding: 10px 20px;
+  }
+  .tab {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.95rem;
+  }
+  .tab.active { background: var(--accent); color: #0b1020; border-color: var(--accent); font-weight: 600; }
+  main { max-width: 980px; margin: 0 auto; padding: 10px 20px 40px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px; margin-bottom: 16px;
+  }
+  .card h2 { margin: 0 0 12px; font-size: 1.15rem; color: var(--accent); }
+  .grid { display: grid; gap: 12px; }
+  .grid.cols5 { grid-template-columns: repeat(5, 1fr); }
+  @media (max-width: 720px) {
+    .grid.cols5 { grid-template-columns: 1fr 1fr; }
+  }
+  label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+  input, select {
+    width: 100%; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel2); color: var(--text);
+    font-size: 0.95rem;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+  .row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 120px; }
+  .btn {
+    background: var(--accent); color: #0b1020; border: none; border-radius: 8px;
+    padding: 9px 16px; cursor: pointer; font-weight: 600; font-size: 0.95rem;
+    white-space: nowrap;
+  }
+  .btn.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+  .result { margin-top: 10px; }
+  .boxgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+  .box {
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .boxlabel { font-size: 0.72rem; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .boxval { font-family: "Consolas", "Courier New", monospace; font-size: 0.95rem; word-break: break-word; }
+  .boxval.big { font-size: 1.15rem; color: var(--good); font-weight: 700; }
+  .note { color: var(--muted); font-size: 0.82rem; margin-top: 8px; }
+  .hidden { display: none; }
+  .kv { display: grid; grid-template-columns: 160px 1fr; gap: 4px 12px; font-size: 0.9rem; }
+  .kv div:first-child { color: var(--muted); }
+
+  /* mini calendar + time */
+  .calrow { display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch; margin-top: 12px; }
+  .calendar { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; max-width: 260px; flex: 0 0 auto; }
+  .caltitle { text-align: center; font-weight: 600; margin-bottom: 8px; color: var(--accent); }
+  .calgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; font-size: 0.8rem; }
+  .calhead { color: var(--muted); font-weight: 600; padding: 2px 0; }
+  .calcell { padding: 4px 0; border-radius: 4px; }
+  .calcell.empty { }
+  .calcell.highlight { background: var(--accent); color: #0b1020; font-weight: 700; }
+  .timebox { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; flex: 1 1 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; min-width: 180px; }
+  .timebox .t12 { font-size: 1.6rem; font-weight: 700; color: var(--good); font-family: "Consolas", "Courier New", monospace; }
+  .timebox .t24 { font-size: 1.2rem; color: var(--accent); font-family: "Consolas", "Courier New", monospace; }
+  .timebox .tlabel { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+  footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🚀 KSP ↔ Earth Time Converter</h1>
+  <p>Convert Kerbin (KSP) time to real Earth time and back. 1 Kerbin second = 1 Earth second.</p>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-tab="duration">Duration</button>
+  <button class="tab" data-tab="date">Kerbin Date ↔ Earth Date</button>
+  <button class="tab" data-tab="reference">Reference</button>
+</div>
+
+<main>
+  <!-- DURATION -->
+  <section id="duration" class="tabpane">
+    <div class="card">
+      <h2>Kerbin duration → Earth duration</h2>
+      <div class="grid cols5">
+        <div><label>Years (426 d)</label><input type="number" id="kY" value="0" min="0" step="1" oninput="convK2E()"></div>
+        <div><label>Days (6 h)</label><input type="number" id="kD" value="0" min="0" step="1" oninput="convK2E()"></div>
+        <div><label>Hours</label><input type="number" id="kH" value="0" min="0" step="1" oninput="convK2E()"></div>
+        <div><label>Minutes</label><input type="number" id="kM" value="0" min="0" step="1" oninput="convK2E()"></div>
+        <div><label>Seconds</label><input type="number" id="kS" value="0" min="0" step="0.1" oninput="convK2E()"></div>
+      </div>
+      <div class="result" id="k2eRes"></div>
+    </div>
+
+    <div class="card">
+      <h2>Earth duration → Kerbin duration</h2>
+      <div class="grid cols5">
+        <div><label>Days (24 h)</label><input type="number" id="eD" value="0" min="0" step="1" oninput="convE2K()"></div>
+        <div><label>Hours</label><input type="number" id="eH" value="0" min="0" step="1" oninput="convE2K()"></div>
+        <div><label>Minutes</label><input type="number" id="eM" value="0" min="0" step="1" oninput="convE2K()"></div>
+        <div><label>Seconds</label><input type="number" id="eS" value="0" min="0" step="0.1" oninput="convE2K()"></div>
+        <div><label>Years (365.25 d)</label><input type="number" id="eY" value="0" min="0" step="1" oninput="convE2K()"></div>
+      </div>
+      <div class="result" id="e2kRes"></div>
+    </div>
+  </section>
+
+  <!-- DATE -->
+  <section id="date" class="tabpane hidden">
+    <div class="card">
+      <h2>Kerbin date → Earth date</h2>
+      <div class="grid cols5">
+        <div><label>Kerbin Year</label><input type="number" id="kdY" value="1" min="1" step="1"></div>
+        <div><label>Kerbin Day (1–426)</label><input type="number" id="kdD" value="1" min="1" max="426" step="1"></div>
+        <div><label>Hour</label><input type="number" id="kdH" value="0" min="0" max="5" step="1"></div>
+        <div><label>Minute</label><input type="number" id="kdM" value="0" min="0" max="59" step="1"></div>
+        <div><label>Second</label><input type="number" id="kdS" value="0" min="0" max="59.999" step="0.1"></div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div><label>Epoch: Earth date/time for Kerbin UT = 0 (Y1 D1 00:00:00)</label><input type="datetime-local" id="epoch1" value="2026-01-01T00:00"></div>
+        <div style="flex:0 0 140px;"><button class="btn" onclick="convKDate2E()">Convert</button></div>
+      </div>
+      <div class="result" id="kd2eRes"></div>
+    </div>
+
+    <div class="card">
+      <h2>Earth date → Kerbin date</h2>
+      <div class="row">
+        <div><label>Earth date/time (UTC)</label><input type="datetime-local" id="earthDt" value="2026-01-01T00:00"></div>
+        <div><label>Epoch: Earth date/time for Kerbin UT = 0</label><input type="datetime-local" id="epoch2" value="2026-01-01T00:00"></div>
+        <div style="flex:0 0 140px;"><button class="btn" onclick="convEDate2K()">Convert</button></div>
+      </div>
+      <div class="result" id="ed2kRes"></div>
+    </div>
+
+    <div class="card">
+      <h2>Universal Time (UT) seconds</h2>
+      <div class="row">
+        <div><label>UT seconds (KSP savegame)</label><input type="number" id="utSec" value="0" min="0" step="0.1"></div>
+        <div><label>Epoch</label><input type="datetime-local" id="epoch3" value="2026-01-01T00:00"></div>
+        <div style="flex:0 0 140px;"><button class="btn" onclick="convUT()">Convert</button></div>
+      </div>
+      <div class="result" id="utRes"></div>
+    </div>
+  </section>
+
+  <!-- REFERENCE -->
+  <section id="reference" class="tabpane hidden">
+    <div class="card">
+      <h2>Kerbin time system</h2>
+      <div class="kv">
+        <div>1 Kerbin second</div><div>= 1 Earth second</div>
+        <div>1 Kerbin minute</div><div>= 60 seconds</div>
+        <div>1 Kerbin hour</div><div>= 60 minutes = 3,600 s</div>
+        <div>1 Kerbin day (solar)</div><div>= 6 hours = 21,600 s</div>
+        <div>1 Kerbin month (Mun orbit)</div><div>≈ 6.43 Kerbin days = 38.6 h</div>
+        <div>1 Kerbin year (orbit)</div><div>= 426 Kerbin days = 9,201,600 s ≈ 106.5 Earth days</div>
+      </div>
+      <p class="note">KSP counts Universal Time (UT) in seconds since Year 1, Day 1, 00:00:00. The in-game clock can be toggled between Kerbin Time (6 h days, 426 d years) and Earth Time (24 h days, 365 d years); the underlying seconds are identical.</p>
+    </div>
+    <div class="card">
+      <h2>Earth time system</h2>
+      <div class="kv">
+        <div>1 minute</div><div>= 60 s</div>
+        <div>1 hour</div><div>= 3,600 s</div>
+        <div>1 day</div><div>= 24 h = 86,400 s</div>
+        <div>1 year</div><div>≈ 365.25 days = 31,557,600 s</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Notes</h2>
+      <p class="note">KSP has no real-world epoch, so mapping a Kerbin date to an Earth calendar date requires choosing an arbitrary Earth date for UT = 0. Adjust the Epoch field as needed. Mission Elapsed Time (MET) uses the same Kerbin seconds since launch.</p>
+    </div>
+  </section>
+</main>
+
+<footer>KSP Time Converter · static, client-side only</footer>
+
+<script>
+const K_SEC_DAY = 21600;   // 6h
+const K_SEC_YEAR = 426 * 21600; // 9201600
+const E_SEC_DAY = 86400;
+
+function num(id){ const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? 0 : v; }
+function pad(n, w=2){ return String(Math.floor(n)).padStart(w,'0'); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtSec(s){ return (typeof s==='number') ? s.toFixed(3).replace(/\.?0+$/,'') : s; }
+
+function breakKerbin(totalSec){
+  const y = Math.floor(totalSec / K_SEC_YEAR);
+  let r = totalSec - y*K_SEC_YEAR;
+  const d = Math.floor(r / K_SEC_DAY);
+  r -= d*K_SEC_DAY;
+  const h = Math.floor(r / 3600);
+  r -= h*3600;
+  const m = Math.floor(r / 60);
+  const s = r - m*60;
+  return {y,d,h,m,s};
+}
+function breakEarth(totalSec){
+  const d = Math.floor(totalSec / E_SEC_DAY);
+  let r = totalSec - d*E_SEC_DAY;
+  const h = Math.floor(r / 3600);
+  r -= h*3600;
+  const m = Math.floor(r / 60);
+  const s = r - m*60;
+  return {d,h,m,s};
+}
+function fmtK2(b){ return `${b.y} yr, ${b.d} d, ${pad(b.h)}:${pad(b.m)}:${fmtSec(b.s)}`; }
+function fmtE(b){ return `${b.d} d, ${pad(b.h)}:${pad(b.m)}:${fmtSec(b.s)}`; }
+
+function formatTime12(d){
+  let h = d.getUTCHours();
+  const m = d.getUTCMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if(h===0) h = 12;
+  return `${h}:${pad(m)} ${ampm}`;
+}
+function formatTime24(d){
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+}
+function renderResult(id, boxes, calendarDate){
+  const el = document.getElementById(id);
+  let html = '<div class="boxgrid">' + boxes.map(b =>
+    `<div class="box"><div class="boxlabel">${esc(b.label)}</div><div class="boxval${b.big?' big':''}">${esc(b.value)}</div></div>`
+  ).join('') + '</div>';
+  if(calendarDate){
+    html += '<div class="calrow">' + miniCalendar(calendarDate) +
+      `<div class="timebox">
+        <div class="tlabel">12-hour (UTC)</div>
+        <div class="t12">${esc(formatTime12(calendarDate))}</div>
+        <div class="tlabel">24-hour (UTC)</div>
+        <div class="t24">${esc(formatTime24(calendarDate))}</div>
+      </div>` + '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function miniCalendar(date){
+  const y = date.getUTCFullYear();
+  const m = date.getUTCMonth();
+  const firstDay = new Date(Date.UTC(y,m,1));
+  const startWeekday = firstDay.getUTCDay();
+  const daysInMonth = new Date(Date.UTC(y,m+1,0)).getUTCDate();
+  const highlight = date.getUTCDate();
+  const monthName = firstDay.toLocaleString('en-US',{month:'long',timeZone:'UTC'});
+  let html = `<div class="calendar"><div class="caltitle">${esc(monthName)} ${y} (UTC)</div><div class="calgrid">`;
+  ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(w => { html += `<div class="calhead">${w}</div>`; });
+  for(let i=0;i<startWeekday;i++) html += '<div class="calcell empty"></div>';
+  for(let d=1; d<=daysInMonth; d++){
+    const cls = d===highlight ? 'calcell highlight' : 'calcell';
+    html += `<div class="${cls}">${d}</div>`;
+  }
+  html += '</div></div>';
+  return html;
+}
+
+function convK2E(){
+  const total = num('kY')*K_SEC_YEAR + num('kD')*K_SEC_DAY + num('kH')*3600 + num('kM')*60 + num('kS');
+  const eb = breakEarth(total);
+  const kb = breakKerbin(total);
+  const landing = new Date(Date.now() + total*1000);
+  renderResult('k2eRes', [
+    {label:'Total seconds', value: total.toLocaleString(undefined,{maximumFractionDigits:3}), big:true},
+    {label:'Kerbin duration', value: fmtK2(kb)},
+    {label:'Earth duration', value: fmtE(eb)},
+    {label:'Earth days (decimal)', value: (total/E_SEC_DAY).toFixed(4)},
+    {label:'Lands on (from now, UTC)', value: landing.toISOString().replace('T',' ').replace(/\.\d+Z/,'')},
+  ], landing);
+}
+function convE2K(){
+  const total = num('eY')*365.25*E_SEC_DAY + num('eD')*E_SEC_DAY + num('eH')*3600 + num('eM')*60 + num('eS');
+  const kb = breakKerbin(total);
+  const eb = breakEarth(total);
+  const landing = new Date(Date.now() + total*1000);
+  renderResult('e2kRes', [
+    {label:'Total seconds', value: total.toLocaleString(undefined,{maximumFractionDigits:3}), big:true},
+    {label:'Earth duration', value: fmtE(eb)},
+    {label:'Kerbin duration', value: fmtK2(kb)},
+    {label:'Lands on (from now, UTC)', value: landing.toISOString().replace('T',' ').replace(/\.\d+Z/,'')},
+  ], landing);
+}
+
+// Date conversions
+function localToUtcMs(s){
+  if(!s) return null;
+  const [date,time] = s.split('T');
+  const [y,mo,d] = date.split('-').map(Number);
+  const t = (time||'00:00').split(':');
+  const h = Number(t[0])||0, mi = Number(t[1])||0, se = Number(t[2])||0;
+  return Date.UTC(y, mo-1, d, h, mi, se);
+}
+function formatUtc(ms){
+  const d = new Date(ms);
+  return d.toISOString().replace('T',' ').replace(/\.\d+Z/,' UTC');
+}
+function kerbinDateFromSec(sec){
+  const y = Math.floor(sec / K_SEC_YEAR) + 1;
+  let r = sec - (y-1)*K_SEC_YEAR;
+  const d = Math.floor(r / K_SEC_DAY) + 1;
+  r -= (d-1)*K_SEC_DAY;
+  const h = Math.floor(r / 3600);
+  r -= h*3600;
+  const m = Math.floor(r / 60);
+  const s = r - m*60;
+  return {y,d,h,m,s};
+}
+function kerbinDateToSec(y,d,h,m,s){
+  return (y-1)*K_SEC_YEAR + (d-1)*K_SEC_DAY + h*3600 + m*60 + (Number(s)||0);
+}
+
+function convKDate2E(){
+  const y = num('kdY'), d = num('kdD'), h = num('kdH'), m = num('kdM'), s = num('kdS');
+  const ut = kerbinDateToSec(y,d,h,m,s);
+  const epoch = localToUtcMs(document.getElementById('epoch1').value);
+  const earthMs = epoch + ut*1000;
+  const earthDate = new Date(earthMs);
+  renderResult('kd2eRes', [
+    {label:'UT seconds', value: ut.toLocaleString(undefined,{maximumFractionDigits:3}), big:true},
+    {label:'Kerbin date', value: `Y${y}, D${String(d).padStart(3,'0')}, ${pad(h)}:${pad(m)}:${fmtSec(s)}`},
+    {label:'Earth date (UTC)', value: formatUtc(earthMs)},
+  ], earthDate);
+}
+function convEDate2K(){
+  const earthMs = localToUtcMs(document.getElementById('earthDt').value);
+  const epoch = localToUtcMs(document.getElementById('epoch2').value);
+  const ut = (earthMs - epoch)/1000;
+  const kd = kerbinDateFromSec(ut);
+  renderResult('ed2kRes', [
+    {label:'UT seconds', value: ut.toLocaleString(undefined,{maximumFractionDigits:3}), big:true},
+    {label:'Earth date (UTC)', value: formatUtc(earthMs)},
+    {label:'Kerbin date', value: `Y${kd.y}, D${String(kd.d).padStart(3,'0')}, ${pad(kd.h)}:${pad(kd.m)}:${fmtSec(kd.s)}`},
+  ], new Date(earthMs));
+}
+function convUT(){
+  const ut = num('utSec');
+  const epoch = localToUtcMs(document.getElementById('epoch3').value);
+  const kd = kerbinDateFromSec(ut);
+  const earthMs = epoch + ut*1000;
+  renderResult('utRes', [
+    {label:'UT seconds', value: ut.toLocaleString(undefined,{maximumFractionDigits:3}), big:true},
+    {label:'Kerbin date', value: `Y${kd.y}, D${String(kd.d).padStart(3,'0')}, ${pad(kd.h)}:${pad(kd.m)}:${fmtSec(kd.s)}`},
+    {label:'Earth date (UTC)', value: formatUtc(earthMs)},
+  ], new Date(earthMs));
+}
+
+// Tabs
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const id = t.dataset.tab;
+    document.querySelectorAll('.tabpane').forEach(p => p.classList.toggle('hidden', p.id !== id));
+  });
+});
+
+// init
+convK2E(); convE2K();
+</script>
+</body>
+</html>
